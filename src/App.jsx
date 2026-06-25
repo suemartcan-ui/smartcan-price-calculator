@@ -18,29 +18,28 @@ const CHANNELS = [
 function parseCSV(text) {
   const lines = text.trim().split("\n");
   if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map(h => h.replace(/"/g, "").trim());
 
-  // Find column indices
-  const idx = (name) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
-  const iSKU     = idx("SKU");
-  const iNome    = idx("Nome do Produto (PT-BR)");
-  const iCusto   = idx("Preço de compra");
-  const iSC      = idx("Preço de venda SC");
-  const iML      = idx("Preço de venda ML(R$)");
-  const iMLF     = idx("Preço de venda ML Frete");
-  const iAMZ     = idx("Preço de venda Amazon (R$)");
-  const iAMZF    = idx("Preço de venda Amazon Frete");
-  const iSHP     = idx("Preço de venda Shopee (R$)");
-  const iSHPF    = idx("Preço de venda Shopee Frete");
+  const headers = lines[0].split(",").map(h => h.replace(/"/g, "").trim());
+  const idx = (name) => headers.findIndex(h => h === name);
+
+  const iSKU  = idx("SKU (Auto-Gerado)");
+  const iNome = idx("Nome do Produto (PT-BR)");
+  const iCusto = idx("Preco de compra(R$)");
+  const iSC   = idx("Preco de venda SC(R$)");
+  const iML   = idx("Preco de venda ML(R$)");
+  const iMLF  = idx("Preco de venda ML Frete Gratis(R$)");
+  const iAMZ  = idx("Preco de venda Amazon (R$)");
+  const iAMZF = idx("Preco de venda Amazon Frete Gratis (R$)");
+  const iSHP  = idx("Preco de venda Shopee (R$)");
+  const iSHPF = idx("Preco de venda Shopee Frete Gratis (R$)");
 
   const parseR = (v) => {
     if (!v) return null;
-    const n = parseFloat(v.replace(/[^0-9.,]/g, "").replace(",", "."));
+    const n = parseFloat(v.replace(/[^0-9.-]/g, ""));
     return isNaN(n) ? null : n;
   };
 
   return lines.slice(1).map(line => {
-    // Handle quoted fields with commas
     const cols = [];
     let cur = "", inQ = false;
     for (let c of line) {
@@ -51,12 +50,12 @@ function parseCSV(text) {
     cols.push(cur.trim());
 
     const sku = cols[iSKU]?.replace(/"/g, "").trim();
-    if (!sku) return null;
+    if (!sku || sku === "SKU (Auto-Gerado)") return null;
 
     return {
       sku,
-      nome:        cols[iNome]?.replace(/"/g, "").trim() || sku,
-      custo:       parseR(cols[iCusto]),
+      nome:  cols[iNome]?.replace(/"/g, "").trim() || sku,
+      custo: parseR(cols[iCusto]),
       precos: {
         sc:           parseR(cols[iSC]),
         ml:           parseR(cols[iML]),
@@ -98,10 +97,7 @@ function ChannelRow({ ch, custo, values, onChange }) {
   const showFrete = ch.key !== "sc";
 
   return (
-    <div style={{
-      background: ch.bg, border: `1px solid ${ch.color}22`,
-      borderRadius: 10, padding: "14px 16px", marginBottom: 10,
-    }}>
+    <div style={{ background: ch.bg, border: `1px solid ${ch.color}22`, borderRadius: 10, padding: "14px 16px", marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: result ? 10 : 0, flexWrap: "wrap" }}>
         <span style={{ color: ch.color, fontWeight: 800, fontSize: 13, minWidth: 140 }}>{ch.label}</span>
 
@@ -153,20 +149,20 @@ function ChannelRow({ ch, custo, values, onChange }) {
 }
 
 export default function App() {
-  const [products, setProducts]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-  const [search, setSearch]       = useState("");
-  const [selected, setSelected]   = useState(null);
+  const [products, setProducts]       = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [search, setSearch]           = useState("");
+  const [selected, setSelected]       = useState(null);
   const [custoManual, setCustoManual] = useState("");
-  const [values, setValues]       = useState({});
+  const [values, setValues]           = useState({});
   const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     fetch(CSV_URL)
       .then(r => r.text())
       .then(text => { setProducts(parseCSV(text)); setLoading(false); })
-      .catch(() => { setError("Erro ao carregar planilha. Verifique a URL."); setLoading(false); });
+      .catch(() => { setError("Erro ao carregar planilha."); setLoading(false); });
   }, []);
 
   const filtered = useMemo(() => {
@@ -185,7 +181,6 @@ export default function App() {
     setSelected(p);
     setSearch(p.nome);
     setCustoManual(p.custo ? p.custo.toString() : "");
-    // Pre-fill channel prices from sheet
     const v = {};
     CHANNELS.forEach(ch => {
       const precoSheet = p.precos?.[ch.key];
@@ -213,7 +208,6 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#e8e8e8", fontFamily: "'DM Sans','Inter',sans-serif", padding: "24px 16px" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet" />
 
-      {/* Header */}
       <div style={{ maxWidth: 820, margin: "0 auto 28px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -223,15 +217,13 @@ export default function App() {
               <div style={{ fontSize: 11, color: "#555", letterSpacing: 1 }}>CALCULADORA DE PREÇOS</div>
             </div>
           </div>
-          {loading && <span style={{ fontSize: 12, color: "#555" }}>Carregando planilha...</span>}
-          {!loading && !error && <span style={{ fontSize: 12, color: "#3a3" }}>✓ {products.length} produtos carregados</span>}
+          {loading && <span style={{ fontSize: 12, color: "#555" }}>Carregando...</span>}
+          {!loading && !error && <span style={{ fontSize: 12, color: "#3a3" }}>✓ {products.length} produtos</span>}
           {error && <span style={{ fontSize: 12, color: "#f87171" }}>{error}</span>}
         </div>
       </div>
 
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
-
-        {/* Product Search */}
         <div style={{ background: "#111", border: "1px solid #222", borderRadius: 12, padding: "18px 20px", marginBottom: 20 }}>
           <div style={{ fontSize: 12, color: "#666", marginBottom: 10, letterSpacing: 0.5 }}>PRODUTO</div>
 
@@ -281,7 +273,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Channel Rows */}
         <div style={{ background: "#111", border: "1px solid #222", borderRadius: 12, padding: "18px 20px", marginBottom: 20 }}>
           <div style={{ fontSize: 12, color: "#666", marginBottom: 14, letterSpacing: 0.5 }}>
             PREÇOS POR CANAL — Imposto 10% sobre venda
@@ -291,7 +282,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* Summary */}
         {summary.length > 0 && (
           <div style={{ background: "#111", border: "1px solid #222", borderRadius: 12, padding: "18px 20px" }}>
             <div style={{ fontSize: 12, color: "#666", marginBottom: 14, letterSpacing: 0.5 }}>RESUMO</div>
