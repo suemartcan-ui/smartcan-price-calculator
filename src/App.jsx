@@ -173,7 +173,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetch(CSV_URL)
+    fetch(CSV_URL + "?t=" + Date.now())
       .then(r => r.text())
       .then(text => { setProducts(parseCSV(text)); setLoading(false); })
       .catch(() => { setError("Erro ao carregar planilha."); setLoading(false); });
