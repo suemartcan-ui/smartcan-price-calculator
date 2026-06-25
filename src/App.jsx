@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQLX4ElvfcdFRFotB1ZYYs-YI-KdS4CqgTLSbzD84XUeBuqGqApjetOaA6oqpf41WCrERbMnhWY7mYx/pub?gid=393936923&single=true&output=csv";
+const CSV_URL = "/api/prices";
 
 const TAXAS = { Normal: 0, Classico: 0.14, Premium: 0.19 };
 const IMPOSTO_RATE = 0.10;
